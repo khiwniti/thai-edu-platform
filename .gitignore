@@ -12,6 +12,9 @@
 
 # testing
 /coverage
+/.nyc_output
+/test-results
+/playwright-report
 
 # next.js
 /.next/
@@ -19,19 +22,28 @@
 
 # production
 /build
+/dist
 
 # misc
 .DS_Store
 *.pem
+.idea/
+.vscode/
+*.log
 
 # debug
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
 
 # local env files
-.env*.local
 .env
+.env*.local
+.env.development
+.env.production
+!.env.example
 
 # vercel
 .vercel
@@ -40,13 +52,74 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
-# Tempo
+# database
+*.db
+*.sqlite
+*.sqlite3
+/prisma/migrations/*_*
+/mongo-data
+/postgres-data
+/redis-data
 
+# Tempo
 node_modules/
 **/tempobook/dynamic/
 **/tempobook/storyboards/
 
-# remove git history
-.git
+# IDE and Editor
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+.project
+.classpath
+.settings/
 
-.github/
+# OS files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# Docker
+docker-compose.override.yml
+*.pid
+
+# Backup files
+*.backup
+*.bak
+*.tmp
+
+# Certificates and keys
+*.pem
+*.key
+*.cert
+*.crt
+
+# Documentation build
+/docs/_build
+/docs/.doctrees
+
+# Test coverage
+coverage/
+.nyc_output/
+*.lcov
+
+# Cache directories
+.cache/
+.parcel-cache/
+.eslintcache
+.stylelintcache
+
+# Build artifacts
+*.tgz
+*.tar.gz

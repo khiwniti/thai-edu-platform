@@ -1,0 +1,124 @@
+# Thai Education Platform - Development Environment
+version: '3.8'
+
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:16-alpine
+    container_name: thai-edu-postgres
+    environment:
+      POSTGRES_USER: thai_edu_user
+      POSTGRES_PASSWORD: thai_edu_password
+      POSTGRES_DB: thai_edu
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./infrastructure/docker/postgres/init.sql:/docker-entrypoint-initdb.d/init.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U thai_edu_user"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # MongoDB Database
+  mongodb:
+    image: mongo:7
+    container_name: thai-edu-mongodb
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: thai_edu_user
+      MONGO_INITDB_ROOT_PASSWORD: thai_edu_password
+      MONGO_INITDB_DATABASE: thai_edu
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongodb_data:/data/db
+      - ./infrastructure/docker/mongodb/init.js:/docker-entrypoint-initdb.d/init.js
+    healthcheck:
+      test: echo 'db.runCommand("ping").ok' | mongosh localhost:27017/thai_edu --quiet
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Redis Cache
+  redis:
+    image: redis:7-alpine
+    container_name: thai-edu-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    command: redis-server --appendonly yes
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Next.js Application (Development)
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+      target: development
+    container_name: thai-edu-app
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=development
+      - DATABASE_URL=postgresql://thai_edu_user:thai_edu_password@postgres:5432/thai_edu
+      - MONGODB_URI=mongodb://thai_edu_user:thai_edu_password@mongodb:27017/thai_edu?authSource=admin
+      - REDIS_URL=redis://redis:6379
+      - GOOGLE_AI_API_KEY=${GOOGLE_AI_API_KEY}
+      - JWT_SECRET=${JWT_SECRET:-dev_jwt_secret_change_in_production}
+      - NEXT_PUBLIC_APP_URL=http://localhost:3000
+    volumes:
+      - .:/app
+      - /app/node_modules
+      - /app/.next
+    depends_on:
+      postgres:
+        condition: service_healthy
+      mongodb:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    command: npm run dev
+
+  # Adminer - Database Management Tool
+  adminer:
+    image: adminer:latest
+    container_name: thai-edu-adminer
+    ports:
+      - "8080:8080"
+    environment:
+      - ADMINER_DEFAULT_SERVER=postgres
+    depends_on:
+      - postgres
+
+  # MongoDB Express - MongoDB Management Tool
+  mongo-express:
+    image: mongo-express:latest
+    container_name: thai-edu-mongo-express
+    ports:
+      - "8081:8081"
+    environment:
+      - ME_CONFIG_MONGODB_ADMINUSERNAME=thai_edu_user
+      - ME_CONFIG_MONGODB_ADMINPASSWORD=thai_edu_password
+      - ME_CONFIG_MONGODB_URL=mongodb://thai_edu_user:thai_edu_password@mongodb:27017/
+      - ME_CONFIG_BASICAUTH_USERNAME=admin
+      - ME_CONFIG_BASICAUTH_PASSWORD=admin123
+    depends_on:
+      - mongodb
+
+volumes:
+  postgres_data:
+    driver: local
+  mongodb_data:
+    driver: local
+  redis_data:
+    driver: local
+
+networks:
+  default:
+    name: thai-edu-network

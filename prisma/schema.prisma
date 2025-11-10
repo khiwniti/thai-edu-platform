@@ -1,0 +1,351 @@
+// Thai Education Platform - Prisma Schema
+// PostgreSQL Database for Relational Data
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================================================
+// User Management
+// ============================================================================
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  phone     String?  @unique
+  password  String
+  role      UserRole @default(STUDENT)
+  
+  // Profile
+  firstName String
+  lastName  String
+  thaiName  String?
+  school    String?
+  grade     Int?
+  province  String?
+  
+  // Preferences
+  language         String  @default("th")
+  learningStyle    String?
+  theme            String  @default("light")
+  
+  // Accessibility
+  fontSize         Int     @default(16)
+  highContrast     Boolean @default(false)
+  ttsEnabled       Boolean @default(false)
+  sttEnabled       Boolean @default(false)
+  
+  // Metadata
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  lastLogin DateTime?
+  isActive  Boolean  @default(true)
+  
+  // Relations
+  ownedClasses         Class[]             @relation("TeacherClasses")
+  enrollments          ClassEnrollment[]
+  assignmentSubmissions Submission[]
+  performanceMetrics   PerformanceMetric[]
+  weakAreas            WeakArea[]
+  supportRequests      TeacherSupportRequest[]
+  contentReviews       ContentReview[]
+  
+  @@index([email])
+  @@index([role])
+  @@map("users")
+}
+
+enum UserRole {
+  STUDENT
+  TEACHER
+  ADMIN
+}
+
+// ============================================================================
+// Class Management
+// ============================================================================
+
+model Class {
+  id             String   @id @default(cuid())
+  name           String
+  subject        String
+  gradeLevel     Int
+  enrollmentCode String   @unique
+  status         String   @default("active")
+  
+  // Relations
+  teacherId      String
+  teacher        User     @relation("TeacherClasses", fields: [teacherId], references: [id])
+  
+  enrollments    ClassEnrollment[]
+  assignments    Assignment[]
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  @@index([teacherId])
+  @@index([subject])
+  @@index([gradeLevel])
+  @@map("classes")
+}
+
+model ClassEnrollment {
+  id        String   @id @default(cuid())
+  
+  classId   String
+  class     Class    @relation(fields: [classId], references: [id], onDelete: Cascade)
+  
+  studentId String
+  student   User     @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  
+  status    String   @default("active")
+  enrolledAt DateTime @default(now())
+  
+  @@unique([classId, studentId])
+  @@index([classId])
+  @@index([studentId])
+  @@map("class_enrollments")
+}
+
+// ============================================================================
+// Assignments & Submissions
+// ============================================================================
+
+model Assignment {
+  id          String   @id @default(cuid())
+  
+  classId     String
+  class       Class    @relation(fields: [classId], references: [id], onDelete: Cascade)
+  
+  title       String
+  description String?  @db.Text
+  type        String   // practice, quiz, project, homework
+  dueDate     DateTime?
+  points      Int?
+  
+  // Settings
+  autoGrade          Boolean @default(false)
+  allowMultipleAttempts Boolean @default(true)
+  maxAttempts        Int?
+  showCorrectAnswers Boolean @default(true)
+  
+  submissions Submission[]
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  @@index([classId])
+  @@index([dueDate])
+  @@map("assignments")
+}
+
+model Submission {
+  id           String   @id @default(cuid())
+  
+  assignmentId String
+  assignment   Assignment @relation(fields: [assignmentId], references: [id], onDelete: Cascade)
+  
+  studentId    String
+  student      User     @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  
+  submittedAt  DateTime @default(now())
+  status       String   @default("submitted") // submitted, graded, returned
+  
+  // Grading
+  score        Decimal? @db.Decimal(5, 2)
+  maxScore     Decimal? @db.Decimal(5, 2)
+  gradedBy     String?  // ai, teacher, hybrid
+  gradedAt     DateTime?
+  feedback     String?  @db.Text
+  
+  attemptNumber Int     @default(1)
+  
+  @@index([assignmentId])
+  @@index([studentId])
+  @@index([status])
+  @@map("submissions")
+}
+
+// ============================================================================
+// Performance Tracking
+// ============================================================================
+
+model PerformanceMetric {
+  id        String   @id @default(cuid())
+  
+  studentId String
+  student   User     @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  
+  conceptId    String
+  subject      String
+  masteryLevel Decimal @db.Decimal(3, 2) // 0.00 to 1.00
+  attempts     Int     @default(0)
+  averageScore Decimal @db.Decimal(5, 2)
+  timeSpent    Int     @default(0) // in seconds
+  
+  lastPracticed DateTime?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  
+  @@unique([studentId, conceptId])
+  @@index([studentId])
+  @@index([conceptId])
+  @@index([masteryLevel])
+  @@map("performance_metrics")
+}
+
+model WeakArea {
+  id        String   @id @default(cuid())
+  
+  studentId String
+  student   User     @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  
+  conceptId    String
+  conceptName  String
+  severity     String  // low, medium, high, critical
+  
+  identifiedAt DateTime @default(now())
+  resolvedAt   DateTime?
+  
+  attempts     Int     @default(0)
+  averageScore Decimal @db.Decimal(5, 2)
+  status       String  @default("active") // active, improving, resolved
+  
+  @@index([studentId])
+  @@index([status])
+  @@index([severity])
+  @@map("weak_areas")
+}
+
+// ============================================================================
+// Teacher Support Network
+// ============================================================================
+
+model TeacherSupportRequest {
+  id        String   @id @default(cuid())
+  
+  studentId String
+  student   User     @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  
+  assignedTeacherId String?
+  
+  subject     String
+  topic       String
+  urgency     String   // low, medium, high, urgent
+  description String   @db.Text
+  status      String   @default("pending") // pending, assigned, in_progress, completed
+  
+  createdAt   DateTime  @default(now())
+  scheduledAt DateTime?
+  completedAt DateTime?
+  
+  @@index([studentId])
+  @@index([assignedTeacherId])
+  @@index([status])
+  @@index([urgency])
+  @@map("teacher_support_requests")
+}
+
+// ============================================================================
+// Content Review (Human-in-the-Loop)
+// ============================================================================
+
+model ContentReview {
+  id        String   @id @default(cuid())
+  
+  contentId   String
+  contentType String  // question, lesson_plan, explanation, etc.
+  
+  reviewerId  String?
+  reviewer    User?   @relation(fields: [reviewerId], references: [id])
+  
+  reviewStatus    String  @default("pending") // pending, approved, rejected, needs_revision
+  confidenceScore Decimal @db.Decimal(3, 2)
+  reviewNotes     String? @db.Text
+  approved        Boolean?
+  
+  createdAt  DateTime  @default(now())
+  reviewedAt DateTime?
+  
+  @@index([contentId])
+  @@index([reviewStatus])
+  @@index([reviewerId])
+  @@map("content_reviews")
+}
+
+// ============================================================================
+// Audit Logs
+// ============================================================================
+
+model AuditLog {
+  id        String   @id @default(cuid())
+  
+  userId    String?
+  action    String   // user_created, user_login, content_generated, etc.
+  entity    String   // user, assignment, content, etc.
+  entityId  String?
+  
+  details   Json?
+  ipAddress String?
+  userAgent String?
+  
+  createdAt DateTime @default(now())
+  
+  @@index([userId])
+  @@index([action])
+  @@index([createdAt])
+  @@map("audit_logs")
+}
+
+// ============================================================================
+// Notifications
+// ============================================================================
+
+model Notification {
+  id        String   @id @default(cuid())
+  
+  userId    String
+  type      String   // assignment_due, grade_posted, message_received, etc.
+  title     String
+  message   String   @db.Text
+  
+  read      Boolean  @default(false)
+  readAt    DateTime?
+  
+  // Optional link
+  link      String?
+  
+  createdAt DateTime @default(now())
+  
+  @@index([userId])
+  @@index([read])
+  @@index([createdAt])
+  @@map("notifications")
+}
+
+// ============================================================================
+// Session Management
+// ============================================================================
+
+model Session {
+  id        String   @id @default(cuid())
+  
+  userId    String
+  token     String   @unique
+  
+  ipAddress String?
+  userAgent String?
+  
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+  
+  @@index([userId])
+  @@index([token])
+  @@index([expiresAt])
+  @@map("sessions")
+}
