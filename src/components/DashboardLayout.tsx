@@ -14,6 +14,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Icons } from '@/components/ui/icons';
+import { ThemeSwitcher } from '@/components/theme-switcher';
 import { cn } from '@/lib/utils';
 
 interface NavItem {
@@ -49,9 +50,9 @@ export function DashboardLayout({ children, navItems }: DashboardLayoutProps) {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
       {/* Header */}
-      <header className="sticky top-0 z-50 w-full border-b bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/60">
+      <header className="sticky top-0 z-50 w-full border-b bg-white/95 dark:bg-gray-800/95 backdrop-blur supports-[backdrop-filter]:bg-white/60 dark:supports-[backdrop-filter]:bg-gray-800/60">
         <div className="container flex h-16 items-center">
           {/* Logo */}
           <Link href="/" className="flex items-center space-x-2 mr-6">
@@ -86,6 +87,11 @@ export function DashboardLayout({ children, navItems }: DashboardLayoutProps) {
               );
             })}
           </nav>
+
+          {/* Theme Switcher */}
+          <div className="mr-2">
+            <ThemeSwitcher />
+          </div>
 
           {/* User Menu */}
           <DropdownMenu>

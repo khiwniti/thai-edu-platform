@@ -6,6 +6,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Icons } from '@/components/ui/icons';
+import { ThemeSwitcher } from '@/components/theme-switcher';
 import Link from 'next/link';
 
 export default function HomePage() {
@@ -39,7 +40,14 @@ export default function HomePage() {
 
   // Show landing page for non-authenticated users
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900">
+      {/* Header with Theme Switcher */}
+      <header className="container mx-auto px-4 py-4">
+        <div className="flex justify-end">
+          <ThemeSwitcher />
+        </div>
+      </header>
+
       {/* Hero Section */}
       <div className="container mx-auto px-4 py-16">
         <div className="text-center max-w-4xl mx-auto">
